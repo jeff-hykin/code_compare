@@ -38,7 +38,7 @@ deno install -n code_compare -A https://deno.land/x/code_compare/compare.js
 
 ## How does it work?
 
-1. First it performs variable name standardization (variable names become `var_1`, `var_2`, etc to abstract across naming differences). Note the code maintains its functionality; the variable scope is repspected and the names are replaced using full language parsing (not regex find-and-replace)
+1. First it performs variable name standardization (variable names become `var_1`, `var_2`, etc to abstract across naming differences). Note the code maintains its functionality; the variable scope is respected and the names are replaced using full language parsing (not regex find-and-replace)
 2. Comments are removed
 3. A code formatter is used standardized any whitespace/indentation/folding differences
 4. The standardized/cleaned/formatted file is saved next to the original as `ORIGINA_NAME.standardized`
