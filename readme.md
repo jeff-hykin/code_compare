@@ -31,7 +31,7 @@ export PATH="$HOME/.deno/bin:$PATH"
 3. Then install code_compare:
 
 ```sh
-deno install -n code_compare -A https://deno.land/x/code_compare/compare.js
+deno install -n code_compare -Af https://deno.land/x/code_compare/compare.js
 ```
 
 
