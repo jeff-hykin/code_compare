@@ -1,8 +1,8 @@
-### What is this?
+# What is this?
 
 A tool for effectively creating a similarity matrix between many different files. Aspects that common across all of files are effectively ignored. Currently the tool supports python, but it is fairly generic and Javascript support is planned.
 
-### How to use
+## How to use
 
 ```sh
 # quick
@@ -14,7 +14,7 @@ code_compare --lang python --output compare.ignore --certainty 90 --  ./file1.py
 ```
 
 
-### How to install
+## How to install
 
 1. Get Deno:
 
@@ -35,7 +35,7 @@ deno install -n code_compare -A https://deno.land/x/code_compare/compare.js
 
 
 
-### How does it work?
+## How does it work?
 
 1. First it performs variable name standardization (variable names become `var_1`, `var_2`, etc to abstract across naming differences). Note the code maintains its functionality; the variable scope is repspected and the names are replaced using full language parsing (not regex find-and-replace)
 2. Comments are removed
