@@ -7,6 +7,7 @@ A tool for effectively creating a similarity matrix between many different files
 ```sh
 # quick
 code_compare --lang python --  ./file1.py ./file2.py ./file3.py ...
+
 # more options
 #    certainty = 90 will be faster but obviously reduces accuracy
 #                specifically it means that it will stop as soon as 90% of the documents have a stable top-4 (over an average of the last 10 iterations)
