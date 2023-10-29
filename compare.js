@@ -1,3 +1,4 @@
+console.log(`loading files`)
 import { compare, compare as comparePython } from "./languages/compare_python.js"
 import { parse } from "https://deno.land/std@0.168.0/flags/mod.ts"
 import { FileSystem, glob } from "https://deno.land/x/quickr@0.6.48/main/file_system.js"

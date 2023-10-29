@@ -5,7 +5,7 @@ import { stats, sum, spread, normalizeZeroToOne, roundedUpToNearest, roundedDown
 import { zip } from "https://deno.land/x/good@1.5.1.0/array.js"
 import ProgressBar from "https://deno.land/x/progress@v1.3.8/mod.ts"
 
-export const similarity = async function({documents, defaultChunkSize=40, checkRate=100, commonalityIgnoreThreshold=0.4, topX=5, lookbackSize=10, }) {
+export const similarity = async function({documents, defaultChunkSize=40, checkRate=100, commonalityIgnoreThreshold=0.4, topX=5, lookbackSize=10, stabilityThreshold=0.95 }) {
     const progress = new ProgressBar({
         title: "stablized entries:",
         total: Object.keys(documents).length,
@@ -43,6 +43,7 @@ export const similarity = async function({documents, defaultChunkSize=40, checkR
     let prevRankings = {}
     let unstableCountHistory = []
     let smoothedPrintoutValue = []
+    const doneThreshold =  stabilityThreshold * documentNames.length
     const rankingsChangedForTopX = (relativeCounts)=>{
         if (JSON.stringify(prevMatrix) == JSON.stringify(frequencyMatrix)) {
             prevMatrix = JSON.parse(JSON.stringify(frequencyMatrix) )
@@ -65,11 +66,12 @@ export const similarity = async function({documents, defaultChunkSize=40, checkR
         }
         unstableCountHistory = unstableCountHistory.slice(-lookbackSize)
         const average = stats(unstableCountHistory).average
-        const approxProportionComplete = (Math.pow((documentNames.length - average)+1, 12) / Math.pow(documentNames.length + 1, 12))
+        const numberOfStable = documentNames.length - average
+        const approxProportionComplete = (Math.pow((doneThreshold - average)+1, 12) / Math.pow(doneThreshold + 1, 12))
         const spreadValue = approxProportionComplete * documentNames.length
         smoothedPrintoutValue.push(spreadValue)
         progress.render(Math.round(stats(smoothedPrintoutValue.slice(-((1-approxProportionComplete)*100),)).average))
-        if (Math.round(average) <= 0) {
+        if (numberOfStable >= doneThreshold) {
             progress.render(documentNames.length) // e.g. 100%
             return false
         } else {

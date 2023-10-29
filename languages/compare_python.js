@@ -23,7 +23,7 @@ const standardize = async (code)=>{
     return newCode
 }
 
-export async function compare(filePaths, lookbackSize) {
+export async function compare(filePaths, certainty) {
     const fileContents = await Promise.all(
         filePaths.map(
             eachPath=>
@@ -40,5 +40,5 @@ export async function compare(filePaths, lookbackSize) {
         )
     )
     const documents = Object.fromEntries(zip(removeCommonSuffix(removeCommonPrefix(filePaths)), fileContents))
-    return await similarity({documents,lookbackSize})
+    return await similarity({documents,stabilityThreshold: certainty/100})
 }

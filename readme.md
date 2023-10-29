@@ -45,6 +45,7 @@ deno install -n code_compare -A https://deno.land/x/code_compare/compare.js
 # quick
 code_compare --lang python --  ./file1.py ./file2.py ./file3.py ...
 # more options
-#    certainty = 1 means fastest processing time, but least-accurate
-code_compare --lang python --output compare.ignore --certainty 10 --  ./file1.py ./file2.py ./file3.py ...
+#    certainty = 90 will be faster but obviously reduces accuracy
+#                specifically it means that it will stop as soon as 90% of the document have a stable top-4 (over an average of the last 10 iterations)
+code_compare --lang python --output compare.ignore --certainty 90 --  ./file1.py ./file2.py ./file3.py ...
 ```
