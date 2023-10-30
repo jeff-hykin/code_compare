@@ -1,6 +1,6 @@
 # What is this?
 
-A tool for effectively creating a similarity matrix between many different files. It effectively ignores aspects that are common across all files by highlighting "rare" similarites (e.g. two files that are similar to each-other but not-similar to the rest of the group). Currently the tool has special enhancements for python, however it works with plaintext files, and in the future enhancements will be available for other languages as well.
+A tool for finding similarities between many different files. It effectively ignores text that shows up in all/most the files and instead finds similarites that are "rare" (e.g. text that exists in two and only two files). Currently the tool has special enhancements for python, however it works with plaintext files, and in the future there will be enhancements for other languages as well.
 
 ## How to use
 

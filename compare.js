@@ -1,7 +1,7 @@
 console.log(`loading files`)
 import { parse } from "https://deno.land/std@0.168.0/flags/mod.ts"
 import { FileSystem, glob } from "https://deno.land/x/quickr@0.6.48/main/file_system.js"
-import { Console, green, yellow } from "https://deno.land/x/quickr@0.6.48/main/console.js"
+import { Console, red, green, yellow } from "https://deno.land/x/quickr@0.6.48/main/console.js"
 import { run, hasCommand, throwIfFails, zipInto, mergeInto, returnAsString, Timeout, Env, Cwd, Stdin, Stdout, Stderr, Out, Overwrite, AppendTo } from "https://deno.land/x/quickr@0.6.49/main/run.js"
 import { parseCsv, createCsv } from "https://deno.land/x/good@1.5.0.3/csv.js" 
 import { zip } from "https://deno.land/x/good@1.5.1.0/array.js"
@@ -28,7 +28,24 @@ const flags = parse(Deno.args, {
     },
 })
 
-async function interactiveAnalysis({relativeCounts, nameToFullPath}) {
+async function interactiveAnalysis(path) {
+    const text = await FileSystem.read(path)
+    if (!text) {
+        throw Error(`\n\nI don't see that file (or the file is empty): ${JSON.stringify(path)}\n`)
+    }
+    let data
+    try {
+        data = yaml.parse(text)
+    } catch (error) {
+        throw Error(`\n\n${JSON.stringify(path)} doesnt seem to be valid as a JSON file\n`)
+    }
+
+    if (!(data.relativeCounts instanceof Object)) {
+        throw Error(`I looked at "relativeCounts" in ${JSON.stringify(path)} but I didn't see a valid value for it`)
+    }
+
+    let {relativeCounts, nameToFullPath} = data
+
     const documentNames = Object.keys(relativeCounts)
     // sort within each basefile
     for (const documentName of documentNames) {
@@ -52,15 +69,17 @@ async function interactiveAnalysis({relativeCounts, nameToFullPath}) {
         console.debug(`error is:`,error)
     }
 
-    if (hasCommand("code") && !preferences.diffCommand) {
-        console.log(``)
-        if (await Console.askFor.yesNo(`Should I use VS Code for diffing?`)) {
-            preferences.diffCommand = ["code", "--wait", "--diff", "FILE1", "FILE2"]
-            console.log(`Cool, I'll save your answer to ${JSON.stringify(flags.preferencesPath)} so I dont have to ask every time`)
-            await FileSystem.write({
-                path: flags.preferencesPath,
-                data: JSON.stringify(preferences,0,4)
-            })
+    if (!preferences.diffCommand) {
+        if (await hasCommand("code")) {
+            console.log(``)
+            if (await Console.askFor.yesNo(`Should I use VS Code for diffing?`)) {
+                preferences.diffCommand = ["code", "--wait", "--diff", "FILE1", "FILE2"]
+                console.log(`Cool, I'll save your answer to ${JSON.stringify(flags.preferencesPath)} so I dont have to ask every time`)
+                await FileSystem.write({
+                    path: flags.preferencesPath,
+                    data: JSON.stringify(preferences,0,4)
+                })
+            }
         }
     }
     const diffLineConvert = (diffCommand, file1, file2)=>{
@@ -72,7 +91,7 @@ async function interactiveAnalysis({relativeCounts, nameToFullPath}) {
         )
     }
     while (!preferences.diffCommand) {
-        const line = await Console.askFor.line(`What argument list should I use to diff two files?\nFor example the vs code command for diffing is:\n    code --wait --diff FILE1 FILE2\nSo if I wanted that to be the diffing tool, I would respond:\n    ["code","--wait","--diff","FILE1","FILE2"]`)
+        const line = await Console.askFor.line(`\nWhat argument list should I use to diff two files?\nFor example to use your default git-diff the command is:\n    git config diff.tool FILE1 FILE2\nSo if I wanted that to be the diffing tool, I would respond:\n    ["git","config","diff.tool","FILE1","FILE2"]\n\n`)
         try {
             const argList = yaml.parse(line)
             if (!(argList instanceof Array)) {
@@ -90,31 +109,64 @@ async function interactiveAnalysis({relativeCounts, nameToFullPath}) {
             
         }
         if (success) {
-            console.log(`Okay, saving it to ${JSON.stringify(flag.preferencesPath)}`)
-            preferences.diffCommand = yaml.parse(line)
-            await FileSystem.write({
-                path: flag.preferencesPath,
-                data: JSON.stringify(preferences,0,4)
-            })
-        } else {
-            if (await Console.askFor.yesNo(`\nLooks like that ended with an error :/\nWould you like to try again?`)) {
-                continue
-            } else {
-                if (await Console.askFor.yesNo(`\nDo you want to save the broken command?`)) {
-                    console.log(`Okay, saving it to ${JSON.stringify(flag.preferencesPath)}`)
-                    preferences.diffCommand = yaml.parse(line)
-                    await FileSystem.write({
-                        path: flag.preferencesPath,
-                        data: JSON.stringify(preferences,0,4)
-                    })
-                    break
-                } else {
-                    console.log(`Okay, well I'll let you try again then`)
-                    continue
-                }
+            if (await Console.askFor.yesNo(`Did that work? (some popup showing some kind of file diff)`)) {
+                console.log(`Okay, saving it to ${JSON.stringify(flag.preferencesPath)}`)
+                preferences.diffCommand = yaml.parse(line)
+                await FileSystem.write({
+                    path: flag.preferencesPath,
+                    data: JSON.stringify(preferences,0,4)
+                })
+                break
             }
-            console.log(`\nLooks like that ended with an error`)
+        } else {
+            console.log(`\nLooks like that ended with an error :/`)
         }
+
+        if (line.match(/\bgit\b/)) {
+            console.log(`NOTE: you might not have a git diff tool setup yet`)
+            console.log(`The following will tell you want its currently configured to be:`)
+            console.log(`    git config diff.tool`)
+            let output = ""
+            try {
+                output = (await run(["git", "config", "diff.tool", ], Stdout(returnAsString))).trim()
+            } catch (error) {
+                
+            }
+            console.log(`The current output of ^that is: ${JSON.stringify(output)}`)
+            console.log(`Here's an example of setting a git-config preference to vscode`)
+            console.log(`    git config diff.tool vscode`)
+            console.log(`    git config difftool.vscode.cmd "code --wait --diff $LOCAL $REMOTE"`)
+            console.log(``)
+        }
+        
+        if (await Console.askFor.yesNo(`Would you like to try again?`)) {
+            continue
+        } else {
+            if (await Console.askFor.yesNo(`\nDo you want to save the broken diff command anyways?`)) {
+                console.log(`Okay, saving it to ${JSON.stringify(flag.preferencesPath)}`)
+                preferences.diffCommand = yaml.parse(line)
+                await FileSystem.write({
+                    path: flag.preferencesPath,
+                    data: JSON.stringify(preferences,0,4)
+                })
+                break
+            } else {
+                console.log(`Okay, well I'll let you try again then`)
+                continue
+            }
+        }
+    }
+    const flaggedEntriesPath = `${FileSystem.parentPath(path)}/flagged_entries.tsv`
+    let flaggedEntries = []
+    try {
+         var { comments, columnNames, rows } = parseCsv({
+            input: await FileSystem.read(flaggedEntriesPath),
+            separator: "\t",
+            firstRowIsColumnNames: true,
+        })
+        flaggedEntries = rows.map(each=>`${each.baseName} <=> ${each.otherName}`)
+    } catch (error) {
+        
     }
     
     function showInstructions() {
@@ -122,9 +174,13 @@ async function interactiveAnalysis({relativeCounts, nameToFullPath}) {
         console.log(`Press "i" [Enter] to compare standardized files (e.g. "inspect")`)
         console.log(`Press "n" [Enter] to go to the next comparision (same base file)`)
         console.log(`Press "p" [Enter] to go to the prev comparision (same base file)`)
+        console.log(`Press "f" [Enter] to flag/unflag an entry`)
         console.log(`Press     [Enter] to go to the next base file`)
         console.log(`Press "u" [Enter] to go to the prev base-file`)
+        console.log(``)
+        console.log(`Note: flagged entries will be saved to: ${JSON.stringify(flaggedEntriesPath)}`)
     }
+    
     console.log()
     console.log()
     showInstructions()
@@ -132,6 +188,8 @@ async function interactiveAnalysis({relativeCounts, nameToFullPath}) {
     let baseHistory = []
     let skipToBase = null
     let promises = []
+    const toFlagKey = (docName, otherDocName)=>`${JSON.stringify(docName)} <=> ${JSON.stringify(otherDocName)}`
+    
     full_restart_loop: while (1) {
         base_doc_loop: for (const [docName, otherDocs] of Object.entries(relativeCounts)) {
             baseHistory.push(docName)
@@ -158,8 +216,9 @@ async function interactiveAnalysis({relativeCounts, nameToFullPath}) {
                     continue
                 }
                 console.log(``)
+                let flagged = flaggedEntries.includes(toFlagKey(docName, otherDocName)) || flaggedEntries.includes(toFlagKey(otherDocName, docName))
                 while (1) {
-                    const nextLetter = await Console.askFor.line(green.blackBackground`    similarity of ${value.toFixed(2)} with:${JSON.stringify(otherDocName)}: `)
+                    const nextLetter = await Console.askFor.line(green.blackBackground`    ${red.blackBackground`${flagged?"(flagged) ":""}`}similarity of ${value.toFixed(2)} with:${JSON.stringify(otherDocName)}: `)
                     if (nextLetter==""||nextLetter==null) {
                         // next base file
                         continue base_doc_loop
@@ -170,7 +229,46 @@ async function interactiveAnalysis({relativeCounts, nameToFullPath}) {
                         continue comparison_loop
                     } else if (nextLetter == "u") {
                         skipToBase = baseHistory[-2]
-                        continue full_restart_loop
+                    } else if (nextLetter == "f") {
+                        // toggle 
+                        if (flagged) {
+                            console.log(`    un-flagged`)
+                            flagged = false
+                            const oneWay = toFlagKey(docName, otherDocName)
+                            const theOther = toFlagKey(otherDocName, docName)
+                            flaggedEntries = flaggedEntries.filter(each=>each!=oneWay||each!=theOther)
+                        } else {
+                            console.log(`    flagged`)
+                            flagged = true
+                            flaggedEntries.push(toFlagKey(docName, otherDocName))
+                        }
+                        try {
+                            await FileSystem.write({
+                                path: flaggedEntriesPath,
+                                data: ["baseName", "otherName", "basePath", "otherPath", "compareCommand"].join("\t")+`\n`+flaggedEntries.map(each=>{
+                                    const [first, second] = each.split(" <=> ")
+                                    const docName = JSON.parse(first)
+                                    const otherDocName = JSON.parse(second)
+                                    const third = nameToFullPath[docName]
+                                    const fourth = nameToFullPath[otherDocName]
+                                    const fifth = `'${diffLineConvert(preferences.diffCommand, nameToFullPath[docName], nameToFullPath[otherDocName]).join("' '")}'`
+                                    return [docName,otherDocName,third,fourth, fifth].map(JSON.stringify).join("\t")
+                                }).join("\n"),
+                            })
+                            await FileSystem.write({
+                                path: path,
+                                data: JSON.stringify(
+                                    {
+                                        ...yaml.parse(await FileSystem.read(path)),
+                                        flaggedEntries,
+                                    },
+                                    0,
+                                    4,
+                                ),
+                            })
+                        } catch (error) {
+                            console.log(`error saving flags: ${error}`)
+                        }
                     } else if (nextLetter == "o") {
                         try {
                             const command = diffLineConvert(preferences.diffCommand, nameToFullPath[docName], nameToFullPath[otherDocName])
@@ -238,6 +336,7 @@ async function cliCompareLogic(flags) {
 }
 
 if (flags.inspect) {
+    await interactiveAnalysis(flags.inspect)
     const text = await FileSystem.read(flags.inspect)
     if (!text) {
         throw Error(`\n\nI don't see that file (or the file is empty): ${JSON.stringify(flags.inspect)}\n`)
@@ -252,8 +351,6 @@ if (flags.inspect) {
     if (!(data.relativeCounts instanceof Object)) {
         throw Error(`I looked at "relativeCounts" in ${JSON.stringify(flags.inspect)} but I didn't see a valid value for it`)
     }
-
-    await interactiveAnalysis(data)
 } else if (flags.lang == "python") {
     const { stages } = await import("./languages/compare_python.js")
     const stageNames = Object.keys(stages)
