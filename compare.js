@@ -332,7 +332,7 @@ async function cliCompareLogic(flags) {
     console.log(`    data saved to: ${path}`)
 
     Console.askFor.confirmation(`\n\nWould you like to interactively compare files now?`)
-    await interactiveAnalysis({relativeCounts, nameToFullPath})
+    await interactiveAnalysis(path)
 }
 
 if (flags.inspect) {
