@@ -49,7 +49,7 @@ deno install -n code_compare -Af https://deno.land/x/code_compare/compare.js
 - some chunks belong to 100% of the documents (perfectly commonplace)
 - the chunk-length is iteratively optimized to neither be unique or commonplace
 - two documents that share a chunk effectively get a +1 in similarity
-- once each document's "top-4 most-similar other documents" have stablized, the process ends
+- once each document's "top-4 most-similar other documents" have stabilized, the process ends
 6. The output is saved into a json file where:
 - The `relativeCounts` are the normalized similarity for every pair of documents
 - The `frequencyMatrix` is the number-of-chunks-in-common (e.g. not normalized)
