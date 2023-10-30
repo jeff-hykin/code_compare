@@ -59,6 +59,7 @@ async function interactiveAnalysis(path) {
         return secondHighestSimilarityForB - secondHighestSimilarityForA
     }))
 
+
     let preferences = {}
     try {
         preferences = yaml.parse(await FileSystem.read(flags.preferencesPath))
@@ -66,7 +67,7 @@ async function interactiveAnalysis(path) {
         // artificial wait so they can see the message
         await new Promise((resolve, reject) => setTimeout(resolve, 1000))
     } catch (error) {
-        console.debug(`error is:`,error)
+        
     }
 
     if (!preferences.diffCommand) {
@@ -170,13 +171,13 @@ async function interactiveAnalysis(path) {
     }
     
     function showInstructions() {
-        console.log(`Press "o" [Enter] to compare original files (e.g. "open")`)
-        console.log(`Press "i" [Enter] to compare standardized files (e.g. "inspect")`)
+        console.log(`Press "f" [Enter] to flag/unflag an entry`)
+        console.log(`Press "o" [Enter] to diff original files (e.g. "open")`)
+        console.log(`Press "i" [Enter] to diff standardized files (e.g. "inspect")`)
         console.log(`Press "n" [Enter] to go to the next comparision (same base file)`)
         console.log(`Press "p" [Enter] to go to the prev comparision (same base file)`)
-        console.log(`Press "f" [Enter] to flag/unflag an entry`)
         console.log(`Press     [Enter] to go to the next base file`)
-        console.log(`Press "u" [Enter] to go to the prev base-file`)
+        console.log(`Press "u" [Enter] to go to the prev base file`)
         console.log(``)
         console.log(`Note: flagged entries will be saved to: ${JSON.stringify(flaggedEntriesPath)}`)
     }
@@ -363,7 +364,7 @@ if (flags.inspect) {
         Deno.exit(0)
     }
     if (flags.stages == null) {
-        flags.stages = stageNames
+        flags.stages = ["removeComments", "format", "autoRenameVars"]
     } else if (typeof flags.stages == 'string') {
         flags.stages = yaml.parse(flags.stages)
     }

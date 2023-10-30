@@ -32,7 +32,7 @@ const toAst = (code) => {
 }
 
 const format = async (code)=>{
-    return await run`black --line-length --skip-magic-trailing-comma 1 -c ${code} ${Stdout(returnAsString)}`
+    return await run`black --line-length 1 --skip-magic-trailing-comma -c ${code} ${Stdout(returnAsString)}`
 }
 
 export const stages = {

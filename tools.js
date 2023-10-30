@@ -200,9 +200,13 @@ export const runComparison = async ({ certainty, stageArgs, stages, filePaths })
                 })
         )
     )
-    const names = removeCommonSuffix(removeCommonPrefix(filePaths))
+    let names = removeCommonSuffix(removeCommonPrefix(filePaths))
+    // for key-ordering reasons names cannot be strings that look like numbers (thanks javascript)
+    if (names.some(name=>(name-0)==(name-0))) {
+        names = names.map(each=>`_${each}`)
+    }
     const nameToFullPath = Object.fromEntries(zip(names, filePaths))
-    const documents = Object.fromEntries(zip(removeCommonSuffix(removeCommonPrefix(filePaths)), fileContents))
+    const documents = Object.fromEntries(zip(names, fileContents))
     return {
         ...await similarity({
             documents,
