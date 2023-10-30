@@ -24,7 +24,7 @@ code_compare --inspect ./comparison/details.json
 #          lets you choose which tranformations to perform and in what order
 #          the available tranformations depend on the language
 #          for python they are:
-#               --stages '["removeComments","format","autoRenameVars"]'
+#               --stages '["removeComments","format","autoRenameVars","toAst"]'
 code_compare \
     --lang python \
     --output compare.ignore \

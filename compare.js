@@ -357,7 +357,7 @@ if (flags.inspect) {
     if (flags.help) {
         console.log(`The available stages for python are:`)
         stageNames.map(each=>console.log(`    ${each}`))
-        console.log(`The default value is all stages in the order above`)
+        console.log(`The default value is ["removeComments","format","autoRenameVars"]`)
         console.log(`example usage:`)
         console.log(`   code_compare --lang python --stages '["format"]' -- file1.py file2.py`)
         Deno.exit(0)
