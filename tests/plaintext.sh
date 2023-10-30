@@ -1,0 +1,1 @@
+deno run -A ./compare.js --lang none --output compare.txt.ignore --certainty 90 --  ./code_examples/real.ignore/**/DPLL.py 

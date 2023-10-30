@@ -1,18 +1,35 @@
 # What is this?
 
-A tool for effectively creating a similarity matrix between many different files. It effectively ignores aspects that are common across all files by highlighting "rare" similarites (e.g. two files that are similar to each-other but not-similar to the rest of the group). Currently the tool supports python, but it is fairly generic and Javascript support is planned.
+A tool for effectively creating a similarity matrix between many different files. It effectively ignores aspects that are common across all files by highlighting "rare" similarites (e.g. two files that are similar to each-other but not-similar to the rest of the group). Currently the tool has special enhancements for python, however it works with plaintext files, and in the future enhancements will be available for other languages as well.
 
 ## How to use
 
 ```sh
 # quick
 code_compare --lang python --  ./file1.py ./file2.py ./file3.py ...
+code_compare --lang none --  ./file1.txt ./file2.txt ./file3.txt ...
+
+# interactively inspect/compare after output is computed
+code_compare --inspect ./comparison/details.json
 
 # more options
-#    certainty defaults to 95
-#    setting it to 90 will be faster but obviously reduces accuracy
-#    specifically it means that it will stop as soon as 90% of the documents have a stable top-4 (over an average of the last 10 iterations)
-code_compare --lang python --output compare.ignore --certainty 90 --  ./file1.py ./file2.py ./file3.py ...
+#    --certainty 
+#          defaults to 95
+#          setting it to 90 will be faster but obviously reduces accuracy
+#          specifically it means that it will stop as soon as 90% of the documents have a stable top-4 (over an average of the last 10 iterations)
+#    --lang 
+#          "none"
+#          "python"
+#    --stages
+#          lets you choose which tranformations to perform and in what order
+#          the available tranformations depend on the language
+#          for python they are:
+#               --stages '["removeComments","format","autoRenameVars"]'
+code_compare \
+    --lang python \
+    --output compare.ignore \
+    --certainty 90 \
+    -- ./file1.py ./file2.py ./file3.py ...
 ```
 
 
@@ -25,7 +42,7 @@ s=https://deno.land/install.sh;sh -s v1.36.1 <<<"$(curl -fsSL $s || wget -qO- $s
 export PATH="$HOME/.deno/bin:$PATH"
 ```
 
-2. Get python black
+2. Get python black (if you want the enhanced python support)
 
 `pip install black`
 
@@ -42,7 +59,7 @@ deno install -n code_compare -Af https://deno.land/x/code_compare/compare.js
 1. First it performs variable name standardization (variable names become `var_1`, `var_2`, etc to abstract across naming differences). Note the code maintains its functionality; the variable scope is respected and the names are replaced using full language parsing (not regex find-and-replace)
 2. Comments are removed
 3. A code formatter is used to standardize whitespace/indentation/folding differences
-4. That standardized version of the file is then saved next to the original as `ORIGINA_NAME.standardized`
+4. That standardized version of the file is then saved next to the original as `ORIGINAL_NAME.standardized`
 5. Then core analysis begins as a stochastic process:
 - pick random string chunks (varying length)
 - see what documents those string chunks can be found in

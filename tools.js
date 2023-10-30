@@ -4,6 +4,8 @@ import { capitalize, indent, toCamelCase, digitsToEnglishArray, toPascalCase, to
 import { stats, sum, spread, normalizeZeroToOne, roundedUpToNearest, roundedDownToNearest } from "https://deno.land/x/good@1.5.1.0/math.js"
 import { zip } from "https://deno.land/x/good@1.5.1.0/array.js"
 import ProgressBar from "https://deno.land/x/progress@v1.3.8/mod.ts"
+import { FileSystem, glob } from "https://deno.land/x/quickr@0.6.48/main/file_system.js"
+import { run, hasCommand, throwIfFails, zipInto, mergeInto, returnAsString, Timeout, Env, Cwd, Stdin, Stdout, Stderr, Out, Overwrite, AppendTo } from "https://deno.land/x/quickr@0.6.49/main/run.js"
 
 export const similarity = async function({documents, defaultChunkSize=12, checkRate=100, commonalityIgnoreThreshold=1, topX=5, lookbackSize=10, stabilityThreshold=0.95, minChunkPerDocCount=null, }) {
     const documentNames = Object.keys(documents)
@@ -88,7 +90,7 @@ export const similarity = async function({documents, defaultChunkSize=12, checkR
         unstableCountHistory = unstableCountHistory.slice(-lookbackSize)
         const average = stats(unstableCountHistory).average
         const numberOfStable = documentNames.length - average
-        const approxProportionComplete = (documentNames.length - numberOfStable)/documentNames.length
+        const approxProportionComplete = (documentNames.length - average)/documentNames.length
         const spreadValue = approxProportionComplete * documentNames.length
         smoothedPrintoutValue.push(spreadValue)
         smoothedPrintoutValue = smoothedPrintoutValue.slice(-100,)
@@ -161,4 +163,51 @@ export function removeCommonSuffix(listOfStrings) {
     ).map(
         each=>[...each].reverse().join("")
     )
+}
+
+export function getStandardizedName(path) {
+    const [ folders, itemName, itemExtensionWithDot ] = FileSystem.pathPieces(path)
+    return `${folders.join("/")}/${itemName}.standardized${itemExtensionWithDot}`
+}
+
+export const runComparison = async ({ certainty, stageArgs, stages, filePaths })=> {
+    if (stages.length != 0) {
+        console.log(`standardizing:`)
+    }
+    const fileContents = await Promise.all(
+        filePaths.filter(each=>{
+            // skip files that are ".standardized"
+            const [ folders, itemName, itemExtensionWithDot ] = FileSystem.pathPieces(each)
+            return !itemName.endsWith(`.standardized`)
+        }).map(
+            eachPath=>
+                FileSystem.read(eachPath).then(async content=>{
+                    if (!content) {
+                        throw Error(`problem reading: ${eachPath}`)
+                    }
+                    for (const each of stages) {
+                        content = await each(content, stageArgs)
+                        if (content == null) {
+                            console.debug(`stage is:`,stage)
+                        }
+                    }
+                    if (stages.length != 0) {
+                        const path = getStandardizedName(eachPath)
+                        console.log(`    creating: ${path}`)
+                        await FileSystem.write({data: content, path})
+                    }
+                    return content
+                })
+        )
+    )
+    const names = removeCommonSuffix(removeCommonPrefix(filePaths))
+    const nameToFullPath = Object.fromEntries(zip(names, filePaths))
+    const documents = Object.fromEntries(zip(removeCommonSuffix(removeCommonPrefix(filePaths)), fileContents))
+    return {
+        ...await similarity({
+            documents,
+            stabilityThreshold: certainty/100
+        }),
+        nameToFullPath,
+    }
 }

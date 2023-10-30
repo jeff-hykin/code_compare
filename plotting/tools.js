@@ -704,3 +704,14 @@ export const histogramHtmlBytes = ({ dataframe, valueColumnName, groupColumnName
         histogramEndBytes,
     ])
 }
+
+// example usage:
+// FileSystem.write({
+//     path: `${flags.output}/summary_of_most_similar.histogram.html`,
+//     data: histogramHtmlBytes({
+//         dataframe: {
+//             x: summaryData.map(each=>each[indexOfScore]),
+//         },
+//         valueColumnName: "x",
+//     }),
+// }),
