@@ -42,7 +42,7 @@ deno install -n code_compare -Af https://deno.land/x/code_compare/compare.js
 2. Comments are removed
 3. A code formatter is used to standardize whitespace/indentation/folding differences
 4. That standardized version of the file is then saved next to the original as `ORIGINA_NAME.standardized`
-5. Then core analysis begins as a stocastic process:
+5. Then core analysis begins as a stochastic process:
 - pick random string chunks (varying length)
 - see what documents those string chunks can be found in
 - some chunks only belong to 1 document (perfectly unique)
