@@ -47,18 +47,18 @@ const defaultColors = ["#636efa", "#EF553B", "#00cc96", "#ab63fa", "#FFA15A", "#
 const histogramEndBytes = (new TextEncoder()).encode(")};</script></div></body></html>")
 import uint8ArrayForHistogramHtml from "./histogram.html.binaryified.js"
 let histogramTemplateString
-export const histogramHtmlBytes = ({ dataframe, valueColumnName, groupColumnName, numberOfBins=null, opacity=0.8, colorOptions=defaultColors, width=1200, height=750, margin=60, responsive=true, binMultiplier=1 }) => {
+export const histogramHtmlBytes = ({ dataframe, valueColumnName, groupColumnName, numberOfBins=null, opacity=0.8, colorOptions=defaultColors, width=1200, height=750, margin=60, responsive=true, binMultiplier=1, barmode="overlay", title, }) => {
     if (dataframe instanceof Array) {
         dataframe = convertListToObjectOfLists(dataframe)
     }
 
     const data = []
     const arg1 = {
-        barmode: "relative",
+        barmode,
         height,
         legend: {
             title: {
-                text: groupColumnName||"",
+                text: title||groupColumnName||"",
             },
             tracegroupgap: 0,
         },
