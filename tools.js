@@ -5,10 +5,20 @@ import { stats, sum, spread, normalizeZeroToOne, roundedUpToNearest, roundedDown
 import { zip } from "https://deno.land/x/good@1.5.1.0/array.js"
 import ProgressBar from "https://deno.land/x/progress@v1.3.8/mod.ts"
 
-export const similarity = async function({documents, defaultChunkSize=40, checkRate=100, commonalityIgnoreThreshold=0.4, topX=5, lookbackSize=10, stabilityThreshold=0.95 }) {
+export const similarity = async function({documents, defaultChunkSize=12, checkRate=100, commonalityIgnoreThreshold=1, topX=5, lookbackSize=10, stabilityThreshold=0.95, minChunkPerDocCount=null, }) {
+    const documentNames = Object.keys(documents)
+    if (minChunkPerDocCount == null && documentNames.length < 30) {
+        minChunkPerDocCount = 5000
+    } else if (minChunkPerDocCount == null && documentNames.length < 60) {
+        minChunkPerDocCount = 500
+    } else if (minChunkPerDocCount == null && documentNames.length < 200) {
+        minChunkPerDocCount = 100
+    } else {
+        minChunkPerDocCount = 50
+    }
     const progress = new ProgressBar({
-        title: "stablized entries:",
-        total: Object.keys(documents).length,
+        title: "stablizing entries:",
+        total: documentNames.length  * (minChunkPerDocCount+1) ,
     })
     progress.render(0)
     const miscHyperparameter = 4
@@ -16,9 +26,11 @@ export const similarity = async function({documents, defaultChunkSize=40, checkR
     // chunk exists in only 1 document = chunk too big
     let chunkSize = defaultChunkSize
     const frequencyMatrix = {}
-    const documentNames = Object.keys(documents)
+    // const chunkTracker = {}
+    
     const documentList = Object.values(documents)
     for (const documentName of documentNames) {
+        // chunkTracker[documentName] = []
         frequencyMatrix[documentName] = {}
         for (const otherDocumentName of documentNames) {
             frequencyMatrix[documentName][otherDocumentName] = 0
@@ -45,6 +57,15 @@ export const similarity = async function({documents, defaultChunkSize=40, checkR
     let smoothedPrintoutValue = []
     const doneThreshold =  stabilityThreshold * documentNames.length
     const rankingsChangedForTopX = (relativeCounts)=>{
+        let chunkInitCount = 0
+        for (const [key, value] of Object.entries(frequencyMatrix)) {
+            chunkInitCount += Math.min(frequencyMatrix[key][key], minChunkPerDocCount)
+        }
+        if (chunkInitCount < (documentNames.length * minChunkPerDocCount)) {
+            progress.render(chunkInitCount)
+            return true
+        }
+
         if (JSON.stringify(prevMatrix) == JSON.stringify(frequencyMatrix)) {
             prevMatrix = JSON.parse(JSON.stringify(frequencyMatrix) )
             return true
@@ -67,12 +88,15 @@ export const similarity = async function({documents, defaultChunkSize=40, checkR
         unstableCountHistory = unstableCountHistory.slice(-lookbackSize)
         const average = stats(unstableCountHistory).average
         const numberOfStable = documentNames.length - average
-        const approxProportionComplete = (Math.pow((doneThreshold - average)+1, 12) / Math.pow(doneThreshold + 1, 12))
+        const approxProportionComplete = (documentNames.length - numberOfStable)/documentNames.length
         const spreadValue = approxProportionComplete * documentNames.length
         smoothedPrintoutValue.push(spreadValue)
-        progress.render(Math.round(stats(smoothedPrintoutValue.slice(-((1-approxProportionComplete)*100),)).average))
+        smoothedPrintoutValue = smoothedPrintoutValue.slice(-100,)
+        var value = Math.round(stats(smoothedPrintoutValue.slice(-((1-approxProportionComplete)*100),)).average)
+        progress.render( chunkInitCount + value)
         if (numberOfStable >= doneThreshold) {
-            progress.render(documentNames.length) // e.g. 100%
+            value = chunkInitCount + documentNames.length
+            progress.render(value) // e.g. 100%
             return false
         } else {
             return true
@@ -94,14 +118,19 @@ export const similarity = async function({documents, defaultChunkSize=40, checkR
                     return { relativeCounts, frequencyMatrix, chunkSize, commonalityCounts,  }
                 }
                 // Deno.writeTextFileSync("stats.json", JSON.stringify({chunkSize, commonalityCounts, relativeCounts, frequencyMatrix},0,4))
+                // Deno.writeTextFileSync("chunks.json", JSON.stringify(chunkTracker,0,4))
             }
             const localChunkSize = Math.round(random.normal(chunkSize, chunkSize/miscHyperparameter)())
             
-            const randomChunk = escapeRegexMatch(randomDoc.slice(_.random(0, randomDoc.length-localChunkSize-1), localChunkSize))
+            const randomIndex = _.random(0, randomDoc.length-localChunkSize-1)
+            const randomChunk = escapeRegexMatch(randomDoc.slice(randomIndex, randomIndex+localChunkSize))
 
             const trueFalseMap = {}
             for (const [otherDocName, otherDoc] of Object.entries(documents)) {
                 trueFalseMap[otherDocName] = !!otherDoc.match(randomChunk)
+                // if (trueFalseMap[otherDocName]) {
+                    // chunkTracker[otherDocName].push(randomChunk)
+                // }
             }
             const commonalityCount = sum(Object.values(trueFalseMap))
             commonalityCounts[commonalityCount] = (commonalityCounts[commonalityCount]+1)||1
@@ -109,22 +138,16 @@ export const similarity = async function({documents, defaultChunkSize=40, checkR
             if (commonalityCount > documentNames.length*commonalityIgnoreThreshold) {
                 chunkSize += 1
             } else {
+                for (const [key, value] of Object.entries(trueFalseMap)) {
+                    if (value) {
+                        frequencyMatrix[randomDocName][key] += 1
+                        frequencyMatrix[key][randomDocName] += 1
+                    }
+                }
                 
                 if (commonalityCount == 1) {
                     chunkSize = chunkSize/2
                 } else {
-                    for (const [key, value] of Object.entries(trueFalseMap)) {
-                        if (value) {
-                            // self
-                            if (key == randomDocName) {
-                                frequencyMatrix[randomDocName][key] += 1
-                            } else {
-                                frequencyMatrix[randomDocName][key] += 1
-                                frequencyMatrix[key][randomDocName] += 1
-                                frequencyMatrix[key][key] += 1
-                            }
-                        }
-                    }
                     chunkSize += 1
                 }
             }
