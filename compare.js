@@ -92,7 +92,7 @@ async function interactiveAnalysis(path) {
         )
     }
     while (!preferences.diffCommand) {
-        const line = await Console.askFor.line(`\nWhat argument list should I use to diff two files?\nFor example to use your default git-diff the command is:\n    git config diff.tool FILE1 FILE2\nSo if I wanted that to be the diffing tool, I would respond:\n    ["git","config","diff.tool","FILE1","FILE2"]\n\n`)
+        const line = await Console.askFor.line(`\nWhat argument list should I use to diff two files?\nFor example to use your default git-diff the command is:\n    git diff --no-index -- FILE1 FILE2\nSo if I wanted that to be the diffing tool, I would respond:\n    ["git","diff","--no-index","--","FILE1","FILE2"]\n\n`)
         try {
             const argList = yaml.parse(line)
             if (!(argList instanceof Array)) {
