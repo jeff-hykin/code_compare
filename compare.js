@@ -92,7 +92,7 @@ async function interactiveAnalysis(path) {
         )
     }
     while (!preferences.diffCommand) {
-        const line = await Console.askFor.line(`\nWhat argument list should I use to diff two files?\nFor example to use your default git-diff the command is:\n    git diff --no-index -- FILE1 FILE2\nSo if I wanted that to be the diffing tool, I would respond:\n    ["git","diff","--no-index","--","FILE1","FILE2"]\n\n`)
+        const line = await Console.askFor.line(`\nWhat argument list should I use to diff two files?\nFor example to use your default git-diff tool the command is:\n    git difftool --no-index -- FILE1 FILE2\nSo and the argument list of that command is:\n    ["git","difftool","--no-index","--","FILE1","FILE2"]\n\n`)
         // emacs --eval '(ediff-files "file1" "file2")'
         try {
             const argList = yaml.parse(line)
@@ -126,7 +126,9 @@ async function interactiveAnalysis(path) {
 
         if (line.match(/\bgit\b/)) {
             console.log(`NOTE: you might not have a git diff tool setup yet`)
-            console.log(`The following will tell you want its currently configured to be:`)
+            console.log(`As a fallback you can always use git's bultin diff tool with this response:`)
+            console.log(`     ["git","diff","--no-index","--","FILE1","FILE2"]`)
+            console.log(`However, you can also check what external tool is configured with:`)
             console.log(`    git config diff.tool`)
             let output = ""
             try {
@@ -137,7 +139,7 @@ async function interactiveAnalysis(path) {
             console.log(`The current output of ^that is: ${JSON.stringify(output)}`)
             console.log(`Here's an example of setting a git-config preference to vscode`)
             console.log(`    git config diff.tool vscode`)
-            console.log(`    git config difftool.vscode.cmd "code --wait --diff $LOCAL $REMOTE"`)
+            console.log(`    git config difftool.vscode.cmd 'code --wait --diff $LOCAL $REMOTE'`)
             console.log(``)
         }
         
