@@ -4,7 +4,7 @@ A tool for finding similarities between many different files. It effectively ign
 
 ## How to use
 
-```sh
+```shell
 # quick
 code_compare --lang python --  ./file1.py ./file2.py ./file3.py ...
 code_compare --lang none --  ./file1.txt ./file2.txt ./file3.txt ...
