@@ -13,7 +13,7 @@ export const similarity = async function({documents, defaultChunkSize=12, checkR
         minChunkPerDocCount = 5000
     } else if (minChunkPerDocCount == null && documentNames.length < 60) {
         minChunkPerDocCount = 500
-    } else if (minChunkPerDocCount == null && documentNames.length < 200) {
+    } else if (minChunkPerDocCount == null && documentNames.length < 20) {
         minChunkPerDocCount = 100
     } else {
         minChunkPerDocCount = 50
