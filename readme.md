@@ -1,8 +1,8 @@
 # What is this?
 
 A tool for finding "rare" similarities between many different files.
-- Text that shows up in all/most the files is ignored
-- Text that is highly unique (ex: text that exists in two and only two files) is highly scored
+- Text that shows up in all/most files is ignored
+- Text that is highly unique (ex: exists in two and only two files) is highly scored
 - Larger strings of "rare" text are scored higher than shorter strings
 
 Works with plaintext files, has special enhancements (formatting) for python, and in the future you can expect enhancements for other languages.
