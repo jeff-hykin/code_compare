@@ -4,7 +4,7 @@ A tool for finding "rare" similarities between many different files.
 - Text that shows up in all/most files is ignored
 - Text that is highly unique (ex: exists in two and only two files) is highly scored
 - Larger strings of "rare" text are scored higher than shorter strings
-- Has both a CLI interactive tool, and generates output as JSON for further processing
+- Has both an interactive CLI (that uses a git-diff to show similarities), and generates output as JSON for further processing
 
 Works with plaintext files, has special enhancements (formatting) for python, and in the future you can expect enhancements for other languages.
 
