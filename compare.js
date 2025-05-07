@@ -2,7 +2,7 @@ console.log(`loading files`)
 import { parse } from "https://deno.land/std@0.168.0/flags/mod.ts"
 import { FileSystem, glob } from "https://deno.land/x/quickr@0.6.48/main/file_system.js"
 import { Console, red, green, yellow } from "https://deno.land/x/quickr@0.6.48/main/console.js"
-import { parseCsv, createCsv } from "https://deno.land/x/good@1.5.0.3/csv.js" 
+import { parseCsv, createCsv } from "https://deno.land/x/good@1.17.0.0/csv.js" 
 import { zip } from "https://deno.land/x/good@1.5.1.0/array.js"
 import { capitalize, indent, toCamelCase, digitsToEnglishArray, toPascalCase, toKebabCase, toSnakeCase, toScreamingtoKebabCase, toScreamingtoSnakeCase, toRepresentation, toString, regex, findAll, iterativelyFindAll, escapeRegexMatch, escapeRegexReplace, extractFirst, isValidIdentifier, removeCommonPrefix, didYouMean } from "https://deno.land/x/good@1.5.1.0/string.js"
 import { histogramHtmlBytes } from "./plotting/tools.js"
@@ -38,7 +38,7 @@ const flags = parse(Deno.args, {
         preferencesPath: `${FileSystem.home}/.config/code_compare/preferences.json`,
     },
 })
-
+const toFlagKey = (docName, otherDocName)=>`${JSON.stringify(docName)} <=> ${JSON.stringify(otherDocName)}`
 async function interactiveAnalysis(path) {
     const text = await FileSystem.read(path)
     if (!text) {
@@ -48,7 +48,7 @@ async function interactiveAnalysis(path) {
     try {
         data = yaml.parse(text)
     } catch (error) {
-        throw Error(`\n\n${JSON.stringify(path)} doesnt seem to be valid as a JSON file\n`)
+        throw Error(`\n\n${JSON.stringify(path)} doesnt seem to be valid as a JSON file (or yaml file for that matter)\n${error}`)
     }
 
     if (!(data.relativeCounts instanceof Object)) {
@@ -172,16 +172,17 @@ async function interactiveAnalysis(path) {
         }
     }
     const flaggedEntriesPath = `${FileSystem.parentPath(path)}/flagged_entries.tsv`
+    
     let flaggedEntries = []
-    try {
+    let flaggedContent = await FileSystem.read(flaggedEntriesPath)
+    if (flaggedContent) {
          var { comments, columnNames, rows } = parseCsv({
-            input: await FileSystem.read(flaggedEntriesPath),
+            input: flaggedContent,
             separator: "\t",
             firstRowIsColumnNames: true,
         })
-        flaggedEntries = rows.map(each=>`${each.baseName} <=> ${each.otherName}`)
-    } catch (error) {
-        
+        flaggedEntries = rows.map(each=>toFlagKey(each.baseName, each.otherName))
+        console.log(`loaded flagged entries from: ${JSON.stringify(flaggedEntriesPath)}`)
     }
     
     function showInstructions() {
@@ -203,7 +204,7 @@ async function interactiveAnalysis(path) {
     let baseHistory = []
     let skipToBase = null
     let promises = []
-    const toFlagKey = (docName, otherDocName)=>`${JSON.stringify(docName)} <=> ${JSON.stringify(otherDocName)}`
+    
     
     full_restart_loop: while (1) {
         base_doc_loop: for (const [docName, otherDocs] of Object.entries(relativeCounts)) {
@@ -281,6 +282,7 @@ async function interactiveAnalysis(path) {
                                     4,
                                 ),
                             })
+                            console.log(`saved flagged entries to: ${JSON.stringify(flaggedEntriesPath)}`)
                         } catch (error) {
                             console.log(`error saving flags: ${error}`)
                         }
