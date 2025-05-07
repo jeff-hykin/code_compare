@@ -1,7 +1,7 @@
 console.log(`loading files`)
 import { parse } from "https://deno.land/std@0.168.0/flags/mod.ts"
 import { FileSystem, glob } from "https://deno.land/x/quickr@0.6.48/main/file_system.js"
-import { Console, red, green, yellow } from "https://deno.land/x/quickr@0.6.48/main/console.js"
+import { Console, red, green, yellow, cyan, blue, gray } from "https://deno.land/x/quickr@0.6.48/main/console.js"
 import { parseCsv, createCsv } from "https://deno.land/x/good@1.17.0.0/csv.js" 
 import { zip } from "https://deno.land/x/good@1.5.1.0/array.js"
 import { capitalize, indent, toCamelCase, digitsToEnglishArray, toPascalCase, toKebabCase, toSnakeCase, toScreamingtoKebabCase, toScreamingtoSnakeCase, toRepresentation, toString, regex, findAll, iterativelyFindAll, escapeRegexMatch, escapeRegexReplace, extractFirst, isValidIdentifier, removeCommonPrefix, didYouMean } from "https://deno.land/x/good@1.5.1.0/string.js"
@@ -9,6 +9,7 @@ import { histogramHtmlBytes } from "./plotting/tools.js"
 import { readLines } from "https://deno.land/std@0.191.0/io/read_lines.ts"
 import $ from "https://esm.sh/@jsr/david__dax@0.43.0/mod.ts"
 const $$ = (...args)=>$(...args).noThrow()
+
 // await $$`false`
 // await $$`false`.text("stderr")
 
@@ -143,9 +144,12 @@ async function interactiveAnalysis(path) {
             console.log(`    git config diff.tool`)
             let output = ""
             try {
+                $.setPrintCommand(true)
                 output = (await $$`${command}`.text("stdout")).trim()
             } catch (error) {
                 
+            } finally {
+                $.setPrintCommand(false)
             }
             console.log(`The current output of ^that is: ${JSON.stringify(output)}`)
             console.log(`Here's an example of setting a git-config preference to vscode`)
@@ -219,6 +223,8 @@ async function interactiveAnalysis(path) {
             let compareHistory = []
             let skipToCompare = null
             console.log(yellow.blackBackground`\nbase file: ${JSON.stringify(docName)}`)
+            let moved = false
+            let extraMessage = ""
             comparison_loop: for (const [otherDocName, value] of Object.entries(otherDocs)) {
                 compareHistory.push(otherDocName)
                 if (skipToCompare != null) {
@@ -231,19 +237,27 @@ async function interactiveAnalysis(path) {
                 if (docName == otherDocName) {
                     continue
                 }
-                console.log(``)
+                if (moved) {
+                    console.log(``)
+                    moved = false
+                }
                 let flagged = flaggedEntries.includes(toFlagKey(docName, otherDocName)) || flaggedEntries.includes(toFlagKey(otherDocName, docName))
                 while (1) {
-                    const nextLetter = await askForLine(green.blackBackground`    ${red.blackBackground`${flagged?"(flagged) ":""}`}similarity of ${value.toFixed(2)} with:${JSON.stringify(otherDocName)}: `)
+                    const nextLetter = await askForLine(green.blackBackground`    similarity of ${cyan(value.toFixed(2))} with:${blue(JSON.stringify(otherDocName))} ${red.blackBackground`${flagged?"(flagged)":""}`}${extraMessage}: `)
+                    extraMessage = ""
                     if (nextLetter==""||nextLetter==null) {
+                        moved = true
                         // next base file
                         continue base_doc_loop
                     } else if (nextLetter == "n") {
+                        moved = true
                         continue comparison_loop
                     } else if (nextLetter == "p") {
+                        moved = true
                         skipToCompare = compareHistory[-2]
                         continue comparison_loop
                     } else if (nextLetter == "u") {
+                        moved = true
                         skipToBase = baseHistory[-2]
                     } else if (nextLetter == "f") {
                         // toggle 
@@ -254,7 +268,6 @@ async function interactiveAnalysis(path) {
                             const theOther = toFlagKey(otherDocName, docName)
                             flaggedEntries = flaggedEntries.filter(each=>each!=oneWay||each!=theOther)
                         } else {
-                            console.log(`    flagged`)
                             flagged = true
                             flaggedEntries.push(toFlagKey(docName, otherDocName))
                         }
@@ -282,25 +295,30 @@ async function interactiveAnalysis(path) {
                                     4,
                                 ),
                             })
-                            console.log(`saved flagged entries to: ${JSON.stringify(flaggedEntriesPath)}`)
+                            extraMessage = gray` (saved)`
                         } catch (error) {
                             console.log(`error saving flags: ${error}`)
                         }
                     } else if (nextLetter == "o") {
                         try {
                             const command = diffLineConvert(preferences.diffCommand, nameToFullPath[docName], nameToFullPath[otherDocName])
-                            console.log(`    running: '${command.join("' '")}'`)
+                            // console.log(`    running: '${command.join("' '")}'`)
                             // intentionally don't await (user might want to keep diff window open)
-                            $$`${command}`.spawn().catch(err=>null).then(each=>each)
+                            $.setPrintCommand(true)
+                            $$`${command}`.spawn().catch(err=>null)
+                            console.log(``)
                         } catch (error) {
                             console.debug(`error is:`,error)
+                        } finally {
+                            $.setPrintCommand(false)
                         }
                     } else if (nextLetter == "i") {
                         try {
                             const command = diffLineConvert(preferences.diffCommand, getStandardizedName(nameToFullPath[docName]), getStandardizedName(nameToFullPath[otherDocName]))
-                            console.log(`    running: '${command.join("' '")}'`)
+                            // console.log(`    running: '${command.join("' '")}'`)
                             // intentionally don't await (user might want to keep diff window open)
-                            $$`${command}`.spawn().catch(err=>null).then(each=>each)
+                            $$`${command}`.spawn().catch(err=>null)
+                            console.log(``)
                         } catch (error) {
                             console.debug(`error is:`,error)
                         }

@@ -1,0 +1,4 @@
+- mark "already compared" 
+- save "not equal" to disk somehow and make a keyboad option
+- make a keyboard controls better
+- make running with no args look for details.json's

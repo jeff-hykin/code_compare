@@ -11,7 +11,7 @@ Works with plaintext files, has special enhancements (formatting) for python, an
 ## How to use
 
 ```shell
-# quick
+# generate comparison files
 code_compare --lang python --  ./file1.py ./file2.py ./file3.py ...
 code_compare --lang none --  ./file1.txt ./file2.txt ./file3.txt ...
 
@@ -41,23 +41,16 @@ code_compare \
 
 ## How to install
 
-1. Get Deno:
-
 ```sh
-s=https://deno.land/install.sh;sh -s v1.41.3 <<<"$(curl -fsSL $s || wget -qO- $s)"
-export PATH="$HOME/.deno/bin:$PATH"
+# install deno
+curl -fsSL https://deno.land/install.sh | sh
+# install nif
+deno install -n code_compare -Afg https://deno.land/x/code_compare/compare.js
 ```
 
-2. Get python black (if you want the enhanced python support)
+Extra: Get python black (if you want the enhanced python support)
 
 `pip install black`
-
-3. Then install code_compare:
-
-```sh
-deno install -n code_compare -Af https://deno.land/x/code_compare/compare.js
-```
-
 
 
 ## How does it work?
