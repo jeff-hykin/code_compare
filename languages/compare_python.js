@@ -2,9 +2,9 @@ import { autoRenameVars, removeComments, parser } from "https://raw.githubuserco
 import { zip, enumerate, count, permute, combinations, wrapAroundGet } from "https://deno.land/x/good@1.5.0.2/array.js"
 import { stats, sum, spread, normalizeZeroToOne, roundedUpToNearest, roundedDownToNearest } from "https://deno.land/x/good@1.5.0.2/math.js"
 import { capitalize, indent, toCamelCase, digitsToEnglishArray, toPascalCase, toKebabCase, toSnakeCase, toScreamingtoKebabCase, toScreamingtoSnakeCase, toRepresentation, toString, regex, findAll, iterativelyFindAll, escapeRegexMatch, escapeRegexReplace, extractFirst, isValidIdentifier, removeCommonPrefix } from "https://deno.land/x/good@1.5.1.0/string.js"
-import { run, hasCommand, throwIfFails, zipInto, mergeInto, returnAsString, Timeout, Env, Cwd, Stdin, Stdout, Stderr, Out, Overwrite, AppendTo } from "https://deno.land/x/quickr@0.6.49/main/run.js"
-
 import { StackManager, replaceSequence, parseTreeAsHtmlLikeString } from "https://raw.githubusercontent.com/jeff-hykin/code_unifier/bc9a70cc4ce8e71f38591a1c96e4fc22da20f50f/tooling.js"
+import $ from "https://esm.sh/@jsr/david__dax@0.43.0/mod.ts"
+const $$ = (...args)=>$(...args).noThrow()
 
 const toAst = (code) => {
     const tree = parser.parse(code)
@@ -32,13 +32,13 @@ const toAst = (code) => {
 }
 
 const format = async (code)=>{
-    return await run`black --line-length 1 --skip-magic-trailing-comma -c ${code} ${Stdout(returnAsString)}`
+    return await $$`black --line-length 1 --skip-magic-trailing-comma -c ${code}`.timeout("5s").text("stdout")
 }
 
 export const stages = {
-    removeComments: (code)=>removeComments({code}),
+    removeComments: (code, args, source)=>removeComments({code}),
     format,
-    autoRenameVars: (code)=>(
+    autoRenameVars: (code, args, source)=>(
         autoRenameVars({
             code,
             useGloballyUniqueNames: false,
