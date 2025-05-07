@@ -2,17 +2,28 @@ console.log(`loading files`)
 import { parse } from "https://deno.land/std@0.168.0/flags/mod.ts"
 import { FileSystem, glob } from "https://deno.land/x/quickr@0.6.48/main/file_system.js"
 import { Console, red, green, yellow } from "https://deno.land/x/quickr@0.6.48/main/console.js"
-import { run, hasCommand, throwIfFails, zipInto, mergeInto, returnAsString, Timeout, Env, Cwd, Stdin, Stdout, Stderr, Out, Overwrite, AppendTo } from "https://deno.land/x/quickr@0.6.49/main/run.js"
 import { parseCsv, createCsv } from "https://deno.land/x/good@1.5.0.3/csv.js" 
 import { zip } from "https://deno.land/x/good@1.5.1.0/array.js"
 import { capitalize, indent, toCamelCase, digitsToEnglishArray, toPascalCase, toKebabCase, toSnakeCase, toScreamingtoKebabCase, toScreamingtoSnakeCase, toRepresentation, toString, regex, findAll, iterativelyFindAll, escapeRegexMatch, escapeRegexReplace, extractFirst, isValidIdentifier, removeCommonPrefix, didYouMean } from "https://deno.land/x/good@1.5.1.0/string.js"
 import { histogramHtmlBytes } from "./plotting/tools.js"
+import { readLines } from "https://deno.land/std@0.191.0/io/read_lines.ts"
+import $ from "https://esm.sh/@jsr/david__dax@0.43.0/mod.ts"
+const $$ = (...args)=>$(...args).noThrow()
+// await $$`false`
+// await $$`false`.text("stderr")
 
 import * as yaml from "https://deno.land/std@0.168.0/encoding/yaml.ts"
 import { runComparison, getStandardizedName } from "./tools.js"
 
 // TODO:
     // optional stage for removing string content
+const write = (text)=>Deno.stdout.writeSync(text instanceof Uint8Array ? text : new TextEncoder().encode(text))
+async function askForLine(question) {
+    write(question)
+    for await (const line of readLines(Deno.stdin)) {
+        return line
+    }
+}
 
 const flags = parse(Deno.args, {
     boolean: ["help", ],
@@ -74,7 +85,7 @@ async function interactiveAnalysis(path) {
         if (await hasCommand("code")) {
             console.log(``)
             if (await Console.askFor.yesNo(`Should I use VS Code for diffing?`)) {
-                preferences.diffCommand = ["code", "--wait", "--diff", "FILE1", "FILE2"]
+                preferences.diffCommand = ["code", "--diff", "FILE1", "FILE2"]
                 console.log(`Cool, I'll save your answer to ${JSON.stringify(flags.preferencesPath)} so I dont have to ask every time`)
                 await FileSystem.write({
                     path: flags.preferencesPath,
@@ -106,7 +117,7 @@ async function interactiveAnalysis(path) {
         Console.askFor.confirmation(`okay let me test it out real quick`) 
         try {
             const argList = diffLineConvert(line, FileSystem.thisFile, `${FileSystem.thisFolder}/tools.js`)
-            var { success, } = await run(argList)
+            $$`${command}`.spawn()
         } catch (error) {
             
         }
@@ -132,7 +143,7 @@ async function interactiveAnalysis(path) {
             console.log(`    git config diff.tool`)
             let output = ""
             try {
-                output = (await run(["git", "config", "diff.tool", ], Stdout(returnAsString))).trim()
+                output = (await $$`${command}`.text("stdout")).trim()
             } catch (error) {
                 
             }
@@ -222,7 +233,7 @@ async function interactiveAnalysis(path) {
                 console.log(``)
                 let flagged = flaggedEntries.includes(toFlagKey(docName, otherDocName)) || flaggedEntries.includes(toFlagKey(otherDocName, docName))
                 while (1) {
-                    const nextLetter = await Console.askFor.line(green.blackBackground`    ${red.blackBackground`${flagged?"(flagged) ":""}`}similarity of ${value.toFixed(2)} with:${JSON.stringify(otherDocName)}: `)
+                    const nextLetter = await askForLine(green.blackBackground`    ${red.blackBackground`${flagged?"(flagged) ":""}`}similarity of ${value.toFixed(2)} with:${JSON.stringify(otherDocName)}: `)
                     if (nextLetter==""||nextLetter==null) {
                         // next base file
                         continue base_doc_loop
@@ -277,19 +288,19 @@ async function interactiveAnalysis(path) {
                         try {
                             const command = diffLineConvert(preferences.diffCommand, nameToFullPath[docName], nameToFullPath[otherDocName])
                             console.log(`    running: '${command.join("' '")}'`)
-                            run(command).catch(err=>null)
-                            await run(["echo", "this is stupid but without it the previous run command isnt scheduled/run (because its async and not awaited)"], Stdout(null))
+                            // intentionally don't await (user might want to keep diff window open)
+                            $$`${command}`.spawn().catch(err=>null).then(each=>each)
                         } catch (error) {
-                            
+                            console.debug(`error is:`,error)
                         }
                     } else if (nextLetter == "i") {
                         try {
                             const command = diffLineConvert(preferences.diffCommand, getStandardizedName(nameToFullPath[docName]), getStandardizedName(nameToFullPath[otherDocName]))
                             console.log(`    running: '${command.join("' '")}'`)
-                            run(command).catch(err=>null)
-                            await run(["echo", "this is stupid but without it the previous run command isnt scheduled/run (because its async and not awaited)"], Stdout(null))
+                            // intentionally don't await (user might want to keep diff window open)
+                            $$`${command}`.spawn().catch(err=>null).then(each=>each)
                         } catch (error) {
-                            
+                            console.debug(`error is:`,error)
                         }
                     } else {
                         console.log(`I don't recognize that option\n`)

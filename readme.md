@@ -38,7 +38,7 @@ code_compare \
 1. Get Deno:
 
 ```sh
-s=https://deno.land/install.sh;sh -s v1.36.1 <<<"$(curl -fsSL $s || wget -qO- $s)"
+s=https://deno.land/install.sh;sh -s v1.41.3 <<<"$(curl -fsSL $s || wget -qO- $s)"
 export PATH="$HOME/.deno/bin:$PATH"
 ```
 

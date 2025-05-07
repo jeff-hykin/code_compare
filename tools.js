@@ -1,11 +1,12 @@
 import { default as _ } from "https://esm.sh/lodash@4.17.21"
 import { default as random } from "https://esm.sh/random"
-import { capitalize, indent, toCamelCase, digitsToEnglishArray, toPascalCase, toKebabCase, toSnakeCase, toScreamingtoKebabCase, toScreamingtoSnakeCase, toRepresentation, toString, regex, findAll, iterativelyFindAll, escapeRegexMatch, escapeRegexReplace, extractFirst, isValidIdentifier, removeCommonPrefix } from "https://deno.land/x/good@1.5.1.0/string.js"
+import { capitalize, toCamelCase, digitsToEnglishArray, toPascalCase, toKebabCase, toSnakeCase, toScreamingtoKebabCase, toScreamingtoSnakeCase, toRepresentation, toString, regex, findAll, iterativelyFindAll, escapeRegexMatch, escapeRegexReplace, extractFirst, isValidIdentifier, removeCommonPrefix } from "https://deno.land/x/good@1.5.1.0/string.js"
 import { stats, sum, spread, normalizeZeroToOne, roundedUpToNearest, roundedDownToNearest } from "https://deno.land/x/good@1.5.1.0/math.js"
 import { zip } from "https://deno.land/x/good@1.5.1.0/array.js"
 import ProgressBar from "https://deno.land/x/progress@v1.3.8/mod.ts"
-import { FileSystem, glob } from "https://deno.land/x/quickr@0.6.48/main/file_system.js"
-import { run, hasCommand, throwIfFails, zipInto, mergeInto, returnAsString, Timeout, Env, Cwd, Stdin, Stdout, Stderr, Out, Overwrite, AppendTo } from "https://deno.land/x/quickr@0.6.49/main/run.js"
+import { FileSystem, glob } from "https://deno.land/x/quickr@0.8.1/main/file_system.js"
+import { Console, clearAnsiStylesFrom, black, white, red, green, blue, yellow, cyan, magenta, lightBlack, lightWhite, lightRed, lightGreen, lightBlue, lightYellow, lightMagenta, lightCyan, blackBackground, whiteBackground, redBackground, greenBackground, blueBackground, yellowBackground, magentaBackground, cyanBackground, lightBlackBackground, lightRedBackground, lightGreenBackground, lightYellowBackground, lightBlueBackground, lightMagentaBackground, lightCyanBackground, lightWhiteBackground, bold, reset, dim, italic, underline, inverse, strikethrough, gray, grey, lightGray, lightGrey, grayBackground, greyBackground, lightGrayBackground, lightGreyBackground, } from "https://deno.land/x/quickr@0.8.1/main/console.js"
+import { indent } from 'https://esm.sh/gh/jeff-hykin/good-js@1.17.0.0/source/flattened/indent.js'
 
 export const similarity = async function({documents, defaultChunkSize=12, checkRate=100, commonalityIgnoreThreshold=1, topX=5, lookbackSize=10, stabilityThreshold=0.95, minChunkPerDocCount=null, }) {
     const documentNames = Object.keys(documents)
@@ -18,6 +19,7 @@ export const similarity = async function({documents, defaultChunkSize=12, checkR
     } else {
         minChunkPerDocCount = 50
     }
+    console.log(`stablizing entries:`)
     const progress = new ProgressBar({
         title: "stablizing entries:",
         total: documentNames.length  * (minChunkPerDocCount+1) ,
@@ -64,6 +66,7 @@ export const similarity = async function({documents, defaultChunkSize=12, checkR
             chunkInitCount += Math.min(frequencyMatrix[key][key], minChunkPerDocCount)
         }
         if (chunkInitCount < (documentNames.length * minChunkPerDocCount)) {
+            console.log(`    ${chunkInitCount}\r`)
             progress.render(chunkInitCount)
             return true
         }
@@ -174,39 +177,73 @@ export const runComparison = async ({ certainty, stageArgs, stages, filePaths })
     if (stages.length != 0) {
         console.log(`standardizing:`)
     }
-    const fileContents = await Promise.all(
-        filePaths.filter(each=>{
-            // skip files that are ".standardized"
-            const [ folders, itemName, itemExtensionWithDot ] = FileSystem.pathPieces(each)
-            return !itemName.endsWith(`.standardized`)
-        }).map(
-            eachPath=>
-                FileSystem.read(eachPath).then(async content=>{
-                    if (!content) {
-                        throw Error(`problem reading: ${eachPath}`)
-                    }
-                    for (const each of stages) {
-                        content = await each(content, stageArgs)
-                        if (content == null) {
-                            console.debug(`stage is:`,stage)
-                        }
-                    }
-                    if (stages.length != 0) {
-                        const path = getStandardizedName(eachPath)
-                        console.log(`    creating: ${path}`)
-                        await FileSystem.write({data: content, path})
-                    }
-                    return content
-                })
-        )
-    )
+    const validPaths = []
+    for (const eachPath of filePaths) {
+        // Skip files that are ".standardized"
+        const [folders, itemName, itemExtensionWithDot] = FileSystem.pathPieces(eachPath)
+        if (itemName.endsWith('.standardized')) {
+            continue
+        }
+        validPaths.push(eachPath)
+    }
+    const startingContent = await Promise.all(validPaths.map(each=>FileSystem.read(each).then(content=>[each,content])))
+    let promises = []
+    
+    let writeOutPromises = []
+    const documents = {}
+    // due to some stages conflicting with themselves (ex: formatters), this needs to be run sequentially
+    for (let [eachPath, content] of startingContent) {
+        // Skip files that are ".standardized"
+        const [folders, itemName, itemExtensionWithDot] = FileSystem.pathPieces(eachPath)
+        try {
+            if (!content) {
+                throw Error(`problem reading: ${eachPath}`)
+            }
+            let stageNumber = 0
+            for (const stage of stages) {
+                stageNumber++
+                let newContent = await stage(content, stageArgs, eachPath)
+                if (typeof newContent != 'string') {
+                    throw Error(`stage ${stageNumber} (${JSON.stringify(stage.toString().slice(0,100)).slice(1,-1)}...) returned non-string`)
+                }
+                content = newContent
+            }
+            if (stages.length !== 0) {
+                const path = getStandardizedName(eachPath)
+                console.log(`    creating: ${path}`)
+                writeOutPromises.push(
+                    FileSystem.write({ data: content, path })
+                )
+            }
+            // console.log(`    content:`,indent({string:content.slice(0,100), by: "        "}))
+            documents[eachPath] = content
+        } catch (error) {
+            console.error(`        ${yellow`${JSON.stringify(eachPath)}`} had an error:`,error)
+            documents[eachPath] = content
+            // console.log(`     error content:`,indent({string:(content||"").slice(0,100), by: "        "}))
+        }
+    }
+
+    try {
+        await Promise.all(writeOutPromises)
+    } catch (error) {
+        console.log(`error writing some standardized files:`,error)
+    }
+
+
     let names = removeCommonSuffix(removeCommonPrefix(filePaths))
     // for key-ordering reasons names cannot be strings that look like numbers (thanks javascript)
     if (names.some(name=>(name-0)==(name-0))) {
         names = names.map(each=>`_${each}`)
     }
     const nameToFullPath = Object.fromEntries(zip(names, filePaths))
-    const documents = Object.fromEntries(zip(names, fileContents))
+    const fullPathToName = Object.fromEntries(zip(filePaths, names))
+    // rename document keys to be more human-readable
+    for (const [fullPath, value] of Object.entries(documents)) {
+        documents[fullPathToName[fullPath]] = value
+        delete documents[fullPath]
+    }
+    console.log(`finished standardizing`)
     return {
         ...await similarity({
             documents,
