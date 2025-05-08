@@ -44,7 +44,7 @@ code_compare \
 ```sh
 # install deno
 curl -fsSL https://deno.land/install.sh | sh
-# install nif
+# install code_compare
 deno install -n code_compare -Afg https://deno.land/x/code_compare/compare.js
 ```
 
